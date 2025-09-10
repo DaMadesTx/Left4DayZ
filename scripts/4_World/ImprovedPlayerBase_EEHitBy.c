@@ -171,7 +171,8 @@ modded class PlayerBase
 	// Swap to MessageImportant(...) for a bigger, more prominent notice.
 	protected void NotifyInfectedEffect(string effectReadable)
 	{
-		MessageStatus(string.Format("You contracted %1 from an infected.", effectReadable));
+		// Use explicit concatenation to avoid confusion about "%1" placeholders
+		MessageStatus("You contracted " + effectReadable + " from an infected.");
 	}
 
 	// Notifies the player that they were knocked out by an infected.
