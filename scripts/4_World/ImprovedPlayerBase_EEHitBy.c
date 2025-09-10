@@ -92,26 +92,38 @@ modded class PlayerBase
 		if (roll < thresholdCholera)
 		{
 			if (!mm.IsModifierActive(eModifiers.MDF_Cholera))
+			{
 				mm.ActivateModifier(eModifiers.MDF_Cholera);
+				NotifyInfectedEffect("Cholera");
+			}
 			return;
 		}
 		if (roll < thresholdFlu)
 		{
 			if (!mm.IsModifierActive(eModifiers.MDF_Flu))
+			{
 				mm.ActivateModifier(eModifiers.MDF_Flu);
+				NotifyInfectedEffect("Influenza");
+			}
 			return;
 		}
 		if (roll < thresholdToxic)
 		{
 			if (!mm.IsModifierActive(eModifiers.MDF_ToxicPoisoning))
+			{
 				mm.ActivateModifier(eModifiers.MDF_ToxicPoisoning);
+				NotifyInfectedEffect("Toxic Poisoning");
+			}
 			return;
 		}
 
 		// Otherwise: Knockout via shock set to zero (safe KO)
 		float currentShock = GetHealth("", "Shock");
 		if (currentShock > 0)
+		{
 			SetHealth("", "Shock", 0);
+			NotifyInfectedKO();
+		}
 	}
 
 	protected bool IsWearingMask()
@@ -129,6 +141,16 @@ modded class PlayerBase
 	protected void DebugPrintInfectedEffectRoll(int roll)
 	{
 		Print(string.Format("[ZombieEffect] roll=%1 cholera<%2 flu<%3 toxic<%4", roll, WEIGHT_CHOLERA, WEIGHT_CHOLERA + WEIGHT_FLU, WEIGHT_CHOLERA + WEIGHT_FLU + WEIGHT_TOXIC));
+	}
+
+	protected void NotifyInfectedEffect(string effectReadable)
+	{
+		MessageStatus(string.Format("You contracted %1 from an infected.", effectReadable));
+	}
+
+	protected void NotifyInfectedKO()
+	{
+		MessageStatus("An infected knocked you unconscious.");
 	}
 }
 
