@@ -1,3 +1,17 @@
+// Improved zombie-on-hit effects for PlayerBase
+// ------------------------------------------------------------
+// Overview:
+// - On infected hit, we roll a small chance to apply a disease or KO.
+// - Server-only: avoids double application; effects replicate to client.
+// - A short cooldown dedupes multiple events from one swing.
+// - Messages: we call MessageStatus(...) on the Player. When called on
+//   the server, the engine forwards it to the owning client so the text
+//   appears on their HUD.
+// Tuning knobs:
+// - ZOMBIE_EXTRA_EFFECT_BASE_CHANCE (base proc chance)
+// - WEIGHT_* (relative outcome weights; sum ≈ 100)
+// - ComputeAdjustedChance(...) (gear and hit-zone modifiers)
+// Extend by adding a new branch in ApplyRandomInfectedEffect() and weight.
 modded class PlayerBase
 {
 	protected float m_LastZombieProcTime;
@@ -15,6 +29,10 @@ modded class PlayerBase
 	protected const int WEIGHT_TOXIC = 25;   // 25%
 	protected const int WEIGHT_KO = 15;      // 15%
 
+	// EEHitBy is called whenever this player is hit. We:
+	// 1) guard for server-only, alive, and infected attacker
+	// 2) apply a 1s cooldown to avoid duplicate procs
+	// 3) roll an adjusted chance and, on success, apply one outcome
 	override void EEHitBy(
 		TotalDamageResult damageResult,
 		int damageType,
@@ -51,6 +69,7 @@ modded class PlayerBase
 		ApplyRandomInfectedEffect();
 	}
 
+	// Returns true if enough time has elapsed since the last successful proc
 	protected bool CanInfectedEffectProcCooldown()
 	{
 		float nowSec = GetGame().GetTime() * 0.001; // ms -> s
@@ -60,6 +79,7 @@ modded class PlayerBase
 		return true;
 	}
 
+	// Computes final chance after gear and hit-zone modifiers.
 	protected float ComputeAdjustedChance(string dmgZone)
 	{
 		float chance = ZOMBIE_EXTRA_EFFECT_BASE_CHANCE;
@@ -77,6 +97,7 @@ modded class PlayerBase
 		return chance;
 	}
 
+	// Uses WEIGHT_* to pick an outcome and shows a HUD message to the player.
 	protected void ApplyRandomInfectedEffect()
 	{
 		int roll = Math.RandomInt(0, 100); // 0..99
@@ -126,28 +147,34 @@ modded class PlayerBase
 		}
 	}
 
+	// True if any item occupies the MASK slot.
 	protected bool IsWearingMask()
 	{
 		EntityAI mask = EntityAI.Cast(GetInventory().FindAttachment(InventorySlots.MASK));
 		return mask != null;
 	}
 
+	// True if any item occupies the GLOVES slot.
 	protected bool IsWearingGloves()
 	{
 		EntityAI gloves = EntityAI.Cast(GetInventory().FindAttachment(InventorySlots.GLOVES));
 		return gloves != null;
 	}
 
+	// Debug helper: logs the random roll and thresholds.
 	protected void DebugPrintInfectedEffectRoll(int roll)
 	{
 		Print(string.Format("[ZombieEffect] roll=%1 cholera<%2 flu<%3 toxic<%4", roll, WEIGHT_CHOLERA, WEIGHT_CHOLERA + WEIGHT_FLU, WEIGHT_CHOLERA + WEIGHT_FLU + WEIGHT_TOXIC));
 	}
 
+	// Shows a small status message on the HUD for the owning player.
+	// Swap to MessageImportant(...) for a bigger, more prominent notice.
 	protected void NotifyInfectedEffect(string effectReadable)
 	{
 		MessageStatus(string.Format("You contracted %1 from an infected.", effectReadable));
 	}
 
+	// Notifies the player that they were knocked out by an infected.
 	protected void NotifyInfectedKO()
 	{
 		MessageStatus("An infected knocked you unconscious.");
